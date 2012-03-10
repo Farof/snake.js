@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+    <title>Canvas Snake demo</title>
+    <style type="text/css" media="screen">
+      body {
+        background-color: whitesmoke;
+      }
+
+      #control span {
+        margin-right: 5px;
+      }
+    </style>
+  </head>
+
+  <body id="body" style="text-align: center; margin-top: 10%">
+    
+    <div id="content">
+      <div id="control" style="display: inline-block; text-align: right;">
+        <label><span>width</span><input id="width" value="20" /></label><br />
+        <label><span>height</span><input id="height" value="20" /></label><br />
+        <label><span>snake width</span><input id="snakeWidth" value="15" /></label><br />
+        <label><span>speed (lower is faster)</span><input id="speed" value="150" /></label><br />
+        <input id="start" type="button" value="start"></input>
+      </div>
+    
+      <div id="snake" style="display: inline-block;">
+        <canvas width="300" height="300" style="border: 1px solid #3E3D40; background-color: white; display: inline-block;"></canvas>
+      </div>
+      
+    </div>
+    
+    <div>
+      <p id="debug"></p>
+    </div>
+
+    <script type="text/javascript" charset="utf-8" src="../src/snake.js"></script>
+    <script type="text/javascript" charset="utf-8">
+      window.addEventListener('DOMContentLoaded', function () {
+        //Snake.debug = true;
+
+        var
+          root = document.getElementById('snake'),
+          startBt = document.getElementById('start'),
+          width = document.getElementById('width'),
+          height = document.getElementById('height'),
+          snakeWidth = document.getElementById('snakeWidth'),
+          speed = document.getElementById('speed'),
+          snake;
+
+        startBt.addEventListener('click', function () {
+          if (snake) {
+            snake.stop();
+          }
+
+          snake = Snake.init(root, {
+            width: width.value,
+            height: height.value,
+            snakeWidth: snakeWidth.value,
+            speed: speed.value
+          });
+          snake.start();
+        });
+      }, false);
+    </script>
+  </body>
+</html>
