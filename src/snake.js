@@ -1,6 +1,5 @@
-"use strict";
-
 (function (exports) {
+  "use strict";
 
   Math.randomInt = function (a, b) {
     a = a || 0;
@@ -19,25 +18,13 @@
   }
 
   var Snake = exports.Snake = function (options) {
-    var ln, onKeydown = this.onKeydown, loop = this.loop;
+    var
+      onKeydown = this.onKeydown,
+      loop = this.loop,
+      onMousemove = this.onMousemove,
+      onMousedown = this.onMousedown;
 
-    options = options || {};
-    this.width = options.width || Snake.width;
-    this.height = options.height || Snake.height;
-    this.snakeWidth = options.snakeWidth || Snake.snakeWidth;
-    this.snakeLength = options.snakeLength || Snake.snakeLength;
-    this.speed = options.speed || Snake.speed;
-    this.hudHeight = options.hudHeight || Snake.hudHeight;
-
-    this.body = [{ x: Math.round(this.width / 2), y: Math.round(this.height / 2) }];
-    this.direction = (this.width > this.height) ? Snake.direction.left : Snake.direction.top;
-
-    ln = this.snakeLength;
-    while (--ln) {
-      this.grow();
-    }
-
-    this.popApple();
+    this.setOptions(options);
 
     this.onKeydownWrapper = function () {
       onKeydown.apply(this, arguments);
@@ -46,12 +33,21 @@
     this.loopWrapper = function () {
       loop.apply(this, arguments);
     }.bind(this);
+
+    this.onMousemoveWrapper = function () {
+      onMousemove.apply(this, arguments);
+    }.bind(this);
+
+    this.onMousedownWrapper = function () {
+      onMousedown.apply(this, arguments);
+    }.bind(this);
+
+    this.build();
+    this.init();
   };
 
   Object.defineProperties(Snake, {
     debug: { value: false, writable: true },
-
-    moved: { value: false, writable: true },
 
     init: {
       value: function (root, options) {
@@ -59,7 +55,8 @@
         while (root.childNodes[0]) {
           root.removeChild(root.childNodes[0]);
         }
-        root.appendChild(snake.build());
+        root.appendChild(snake.canvas);
+        snake.setup();
         return snake;
       }
     },
@@ -82,13 +79,77 @@
   });
 
   Object.defineProperties(Snake.prototype, {
-    start: {
+    playing: { value: false, writable: true },
+    paused: { value: false, writable: true },
+    showHelp: { value: false, writable: true },
+    moved: { value: false, writable: true },
+
+    setOptions: {
+      value: function (options) {
+        options = options || {};
+        this.width = options.width || Snake.width;
+        this.height = options.height || Snake.height;
+        this.snakeWidth = options.snakeWidth || Snake.snakeWidth;
+        this.snakeLength = options.snakeLength || Snake.snakeLength;
+        this.speed = options.speed || Snake.speed;
+        this.hudHeight = options.hudHeight || Snake.hudHeight;
+        return this;
+      }
+    },
+
+    setup: {
       value: function () {
         this.hookEvents();
-        if (!this.apple) {
-          this.popApple();
+        this.rect = {
+          top: this.canvas.offsetTop,
+          left: this.canvas.offsetLeft
+        };
+        this.drawScene();
+      }
+    },
+
+    init: {
+      value: function () {
+        var ln;
+
+        this.body = [{ x: Math.round(this.width / 2), y: Math.round(this.height / 2) }];
+        this.direction = (this.width > this.height) ? Snake.direction.left : Snake.direction.top;
+
+        ln = this.snakeLength;
+        while (--ln) {
+          this.grow();
         }
-        this.timer = setInterval(this.loopWrapper, this.speed);
+
+        this.popApple();
+      }
+    },
+
+    start: {
+      value: function () {
+        if (!this.playing) {
+          if (this.isDead()) {
+            this.init();
+          }
+
+          this.paused = false;
+          this.playing = true;
+          this.timer = setInterval(this.loopWrapper, this.speed);
+        }
+        return this;
+      }
+    },
+
+    playPause: {
+      value: function () {
+        if (this.playing) {
+          if (this.paused) {
+            this.timer = setInterval(this.loopWrapper, this.speed);
+          } else {
+            clearInterval(this.timer);
+          }
+          this.paused = !this.paused;
+        }
+        return this;
       }
     },
 
@@ -107,8 +168,11 @@
 
     stop: {
       value: function () {
-        clearInterval(this.timer);
-        this.unhookEvents();
+        if (this.playing) {
+          clearInterval(this.timer);
+          this.playing = false;
+          this.paused = false;
+        }
       }
     },
 
@@ -139,7 +203,7 @@
     eating: {
       value: function () {
         var apple = this.apple, head = this.body[0];
-        return head.x === apple.x && head.y === apple.y
+        return head.x === apple.x && head.y === apple.y;
       }
     },
 
@@ -164,7 +228,7 @@
       value: function () {
         do {
           this.apple = { x: Math.randomInt(0, this.width), y: Math.randomInt(0, this.height) };
-        } while(this.appleOnBody());
+        } while (this.appleOnBody());
         return this;
       }
     },
@@ -192,16 +256,16 @@
         node.style.backgroundColor = 'white';
         node.style.display = 'inline-block';
 
-        this.initCanvas();
+        this.ctx = this.canvas.getContext('2d');
 
         return node;
       }
     },
 
-    initCanvas: {
+    destroy: {
       value: function () {
-        var ctx = this.ctx = this.canvas.getContext('2d');
-        this.drawScene();
+        this.stop();
+        this.unhookEvents();
         return this;
       }
     },
@@ -224,6 +288,7 @@
         this.drawSnake();
         this.drawApple();
         this.drawHUD();
+        this.event ? this.event.consumed = true : null;
 
         return this;
       }
@@ -272,9 +337,10 @@
 
     drawHUD: {
       value: function () {
-        var ctx = this.ctx;
+        var ctx = this.ctx, metrics;
 
         ctx.fillStyle = 'black';
+        ctx.strokeStyle = 'black';
         ctx.lineWidth = 1;
         ctx.font = '12px Helvetica';
         ctx.textBaseline = 'middle';
@@ -297,8 +363,81 @@
           ctx.textAlign = 'left';
         }
 
+        metrics = this.drawButton('help', 'right', this.canvas.width - 10, this.canvas.height - this.hudHeight / 2, null, this.help.bind(this));
+
+        this.drawButton(this.playing ? (this.paused ? 'resume' : 'pause') : 'start', 'right', this.canvas.width - 26, this.canvas.height - this.hudHeight / 2, metrics, this.playing ? this.playPause.bind(this) : this.start.bind(this));
+
         // draw score
+        ctx.fillStyle = 'black';
         ctx.fillText('score: ' + (this.body.length - this.snakeLength), 10, this.canvas.height - this.hudHeight / 2);
+
+        if (this.showHelp) {
+          this.drawHelp();
+        }
+
+        this.event ? this.event.consumed = true : null;
+      }
+    },
+
+    drawButton: {
+      value: function (text, align, x, y, previous, onClick) {
+        var
+          ctx = this.ctx,
+          previousAlign = ctx.textAlign,
+          metrics = ctx.measureText(text),
+          rect = this.event ? {
+            x: this.event.clientX - this.rect.left,
+            y: this.event.clientY - this.rect.top
+          } : {},
+          hover = false;
+
+        rect.top = y - 7.5;
+        rect.height = 15;
+        rect.bottom = rect.top + rect.height;
+        rect.left = x - metrics.width - (previous ? previous.width : 0) - 3;
+        rect.width = metrics.width + 6;
+        rect.right = rect.left + rect.width;
+
+        previous = previous || { width: 0 };
+
+        ctx.beginPath();
+        ctx.rect(rect.left, rect.top, rect.width, rect.height);
+        ctx.stroke();
+        hover = ctx.isPointInPath(rect.x, rect.y);
+        if (hover) {
+          ctx.fillStyle = 'black';
+          ctx.fill();
+          if (!this.event.consumed && this.event.type === 'mousedown') {
+            onClick();
+          }
+        }
+        ctx.closePath();
+
+        ctx.textAlign = align;
+        ctx.fillStyle = hover ? 'white' : 'black';
+        ctx.fillText(text, x - previous.width, y);
+        ctx.textAlign = previousAlign;
+
+        ctx.clearRect(rect.left - 1, rect.top - 1, 2, 2);
+        ctx.fillRect(rect.left, rect.top, 2, 2);
+
+        ctx.clearRect(rect.right - 1, rect.top - 1, 2, 2);
+        ctx.fillRect(rect.right - 2, rect.top, 2, 2);
+
+        ctx.clearRect(rect.left - 1, rect.bottom - 1, 2, 2);
+        ctx.fillRect(rect.left, rect.bottom - 2, 2, 2);
+
+        ctx.clearRect(rect.right - 1, rect.bottom - 1, 2, 2);
+        ctx.fillRect(rect.right - 2, rect.bottom - 2, 2, 2);
+
+        return metrics;
+      }
+    },
+
+    drawHelp: {
+      value: function () {
+        var ctx = this.ctx;
+        console.log('draw help');
       }
     },
 
@@ -332,6 +471,20 @@
       }
     },
 
+    help: {
+      value: function () {
+        //this.showHelp = !this.showHelp;
+
+        this.drawHelp();
+
+        if (this.showHelp === this.playing) {
+          //this.playPause();
+        }
+
+        return this;
+      }
+    },
+
     step: {
       value: function () {
         var first = this.body[0];
@@ -345,25 +498,48 @@
       value: function (e) {
         var key = e.keyCode;
 
-        if (!this.moved && key === 38 && this.direction !== Snake.direction.bottom) {
-          this.direction = Snake.direction.top;
-          this.moved = true;
-        } else if (!this.moved && key === 39 && this.direction !== Snake.direction.left) {
-          this.direction = Snake.direction.right;
-          this.moved = true;
-        } else if (!this.moved && key === 40 && this.direction !== Snake.direction.top) {
-          this.direction = Snake.direction.bottom;
-          this.moved = true;
-        } else if (!this.moved && key === 37 && this.direction !== Snake.direction.right) {
-          this.direction = Snake.direction.left;
-          this.moved = true;
+        if (this.playing) {
+          if (!this.moved && key === 38 && this.direction !== Snake.direction.bottom) {
+            this.direction = Snake.direction.top;
+            this.moved = true;
+          } else if (!this.moved && key === 39 && this.direction !== Snake.direction.left) {
+            this.direction = Snake.direction.right;
+            this.moved = true;
+          } else if (!this.moved && key === 40 && this.direction !== Snake.direction.top) {
+            this.direction = Snake.direction.bottom;
+            this.moved = true;
+          } else if (!this.moved && key === 37 && this.direction !== Snake.direction.right) {
+            this.direction = Snake.direction.left;
+            this.moved = true;
+          }
+
+          if (key === 32) {
+            this.playPause();
+            this.drawHUD();
+          }
         }
+      }
+    },
+
+    onMousemove: {
+      value: function (e) {
+        this.event = e;
+        this.drawHUD();
+      }
+    },
+
+    onMousedown: {
+      value: function (e) {
+        this.event = e;
+        this.drawHUD();
       }
     },
 
     hookEvents: {
       value: function () {
         document.addEventListener('keydown', this.onKeydownWrapper, false);
+        this.canvas.addEventListener('mousemove', this.onMousemoveWrapper, false);
+        this.canvas.addEventListener('mousedown', this.onMousedownWrapper, false);
         return this;
       }
     },

@@ -49,9 +49,16 @@
           speed = document.getElementById('speed'),
           snake;
 
+        snake = Snake.init(root, {
+          width: width.value,
+          height: height.value,
+          snakeWidth: snakeWidth.value,
+          speed: speed.value
+        });
+
         startBt.addEventListener('click', function () {
           if (snake) {
-            snake.stop();
+            snake.destroy();
           }
 
           snake = Snake.init(root, {
