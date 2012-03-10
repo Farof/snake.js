@@ -27,6 +27,7 @@
     this.snakeWidth = options.snakeWidth || Snake.snakeWidth;
     this.snakeLength = options.snakeLength || Snake.snakeLength;
     this.speed = options.speed || Snake.speed;
+    this.hudHeight = options.hudHeight || Snake.hudHeight;
 
     this.body = [{ x: Math.round(this.width / 2), y: Math.round(this.height / 2) }];
     this.direction = (this.width > this.height) ? Snake.direction.left : Snake.direction.top;
@@ -68,6 +69,7 @@
     snakeWidth: { value: 20 },
     snakeLength: { value: 3 },
     speed: { value: 300 },
+    hudHeight: { value: 20 },
 
     direction: {
       value: {
@@ -129,7 +131,7 @@
     gameOver: {
       value: function () {
         this.stop();
-        document.getElementById('debug').textContent = 'GAME OVER - Score = ' + (this.body.length - this.snakeLength);
+        this.drawHUD();
         return this;
       }
     },
@@ -183,7 +185,7 @@
       value: function () {
         var node = this.canvas = document.createElement('canvas');
 
-        node.setAttribute('height', this.height * this.snakeWidth);
+        node.setAttribute('height', this.height * this.snakeWidth + this.hudHeight);
         node.setAttribute('width', this.width * this.snakeWidth);
 
         node.style.border = '1px solid #3E3D40';
@@ -221,6 +223,7 @@
 
         this.drawSnake();
         this.drawApple();
+        this.drawHUD();
 
         return this;
       }
@@ -264,6 +267,38 @@
         ctx.closePath();
 
         return this;
+      }
+    },
+
+    drawHUD: {
+      value: function () {
+        var ctx = this.ctx;
+
+        ctx.fillStyle = 'black';
+        ctx.lineWidth = 1;
+        ctx.font = '12px Helvetica';
+        ctx.textBaseline = 'middle';
+
+        // clean hud zone
+        ctx.clearRect(0, this.canvas.height - this.hudHeight, this.canvas.width, this.hudHeight);
+
+        // draw hud top bar
+        ctx.beginPath();
+        ctx.moveTo(0, this.canvas.height - this.hudHeight);
+        ctx.lineTo(this.width * this.snakeWidth, this.canvas.height - this.hudHeight);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+
+        if (this.isDead()) {
+          // draw GAME OVER & restart button
+          ctx.textAlign = 'center';
+          ctx.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height - this.hudHeight / 2);
+          ctx.textAlign = 'left';
+        }
+
+        // draw score
+        ctx.fillText('score: ' + (this.body.length - this.snakeLength), 10, this.canvas.height - this.hudHeight / 2);
       }
     },
 
