@@ -143,6 +143,7 @@
       value: function () {
         if (this.playing) {
           if (this.paused) {
+            this.showHelp = false;
             this.timer = setInterval(this.loopWrapper, this.speed);
           } else {
             clearInterval(this.timer);
@@ -281,6 +282,13 @@
       value: function () {
         this.resetCanvas();
 
+        this.drawn = {
+          debug: false,
+          snake: false,
+          apple: false,
+          hud: false
+        };
+
         if (Snake.debug) {
           this.drawDebug();
         }
@@ -301,19 +309,23 @@
           width = this.snakeWidth,
           ctx = this.ctx;
 
-        ctx.fillStyle = 'black';
-        ctx.lineWidth = 0.2;
-        ctx.lineCap = 'butt';
+          if (!this.drawn.snake) {
+            ctx.fillStyle = 'black';
+            ctx.lineWidth = 0.2;
+            ctx.lineCap = 'butt';
 
-        for (i = 0, ln = this.body.length; i < ln; i += 1) {
-          part = this.body[i];
+            for (i = 0, ln = this.body.length; i < ln; i += 1) {
+              part = this.body[i];
 
-          ctx.beginPath();
-          ctx.rect(width * part.x, width * part.y, width, width);
-          ctx.fill();
-          ctx.stroke();
-          ctx.closePath();
-        }
+              ctx.beginPath();
+              ctx.rect(width * part.x, width * part.y, width, width);
+              ctx.fill();
+              ctx.stroke();
+              ctx.closePath();
+            }
+
+            this.drawn.snake = true;
+          }
 
         return this;
       }
@@ -323,13 +335,17 @@
       value: function () {
         var ctx = this.ctx, apple = this.apple, width = this.snakeWidth;
 
-        ctx.fillStyle = 'grey';
+        if (!this.drawn.apple) {
+          ctx.fillStyle = 'grey';
 
-        ctx.beginPath();
-        ctx.rect(width * apple.x, width * apple.y, width, width);
-        ctx.fill();
-        ctx.stroke();
-        ctx.closePath();
+          ctx.beginPath();
+          ctx.rect(width * apple.x, width * apple.y, width, width);
+          ctx.fill();
+          ctx.stroke();
+          ctx.closePath();
+
+          this.drawn.apple = true;
+        }
 
         return this;
       }
@@ -339,6 +355,15 @@
       value: function () {
         var ctx = this.ctx, metrics;
 
+        this.drawn.hud = {
+          top: false,
+          score: false,
+          gameOver: false,
+          startBt: false,
+          helpBt: false,
+          help: false
+        };
+
         ctx.fillStyle = 'black';
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 1;
@@ -346,36 +371,50 @@
         ctx.textBaseline = 'middle';
 
         // clean hud zone
-        ctx.clearRect(0, this.canvas.height - this.hudHeight, this.canvas.width, this.hudHeight);
+        console.log('clear', Date.now());
+        ctx.clearRect(0, this.canvas.height - this.hudHeight - 1, this.canvas.width, this.hudHeight + 1);
 
         // draw hud top bar
-        ctx.beginPath();
-        ctx.moveTo(0, this.canvas.height - this.hudHeight);
-        ctx.lineTo(this.width * this.snakeWidth, this.canvas.height - this.hudHeight);
-        ctx.fill();
-        ctx.stroke();
-        ctx.closePath();
+        if (!this.drawn.hud.top) {
+          ctx.beginPath();
+          ctx.moveTo(0, this.canvas.height - this.hudHeight);
+          ctx.lineTo(this.width * this.snakeWidth, this.canvas.height - this.hudHeight);
+          ctx.fill();
+          ctx.stroke();
+          ctx.closePath();
+          this.drawn.hud.top = true;
+        }
 
-        if (this.isDead()) {
+        if (this.isDead() && !this.drawn.hud.gameOver) {
           // draw GAME OVER & restart button
           ctx.textAlign = 'center';
           ctx.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height - this.hudHeight / 2);
           ctx.textAlign = 'left';
+          this.drawn.hud.gameOver = true;
         }
 
-        metrics = this.drawButton('help', 'right', this.canvas.width - 10, this.canvas.height - this.hudHeight / 2, null, this.help.bind(this));
+        if (!this.drawn.hud.helpBt) {
+          metrics = this.drawButton('help', 'right', this.canvas.width - 10, this.canvas.height - this.hudHeight / 2, null, this.help.bind(this));
+          this.drawn.hud.helpBt = true;
+        }
 
-        this.drawButton(this.playing ? (this.paused ? 'resume' : 'pause') : 'start', 'right', this.canvas.width - 26, this.canvas.height - this.hudHeight / 2, metrics, this.playing ? this.playPause.bind(this) : this.start.bind(this));
+        if (!this.drawn.hud.startBt) {
+          this.drawButton(this.playing ? (this.paused ? 'resume' : 'pause') : 'start', 'right', this.canvas.width - 26, this.canvas.height - this.hudHeight / 2, metrics, this.playing ? this.playPause.bind(this) : this.start.bind(this));
+          this.drawn.hud.startBt = true;
+        }
 
         // draw score
-        ctx.fillStyle = 'black';
-        ctx.fillText('score: ' + (this.body.length - this.snakeLength), 10, this.canvas.height - this.hudHeight / 2);
+        if (!this.drawn.hud.score) {
+          ctx.fillStyle = 'black';
+          ctx.textAlign = 'left';
+          console.log('score');
+          ctx.fillText('score: ' + (this.body.length - this.snakeLength), 10, this.canvas.height - this.hudHeight / 2);
+          this.drawn.hud.score = true;
+        }
 
         if (this.showHelp) {
           this.drawHelp();
         }
-
-        this.event ? this.event.consumed = true : null;
       }
     },
 
@@ -408,6 +447,8 @@
           ctx.fillStyle = 'black';
           ctx.fill();
           if (!this.event.consumed && this.event.type === 'mousedown') {
+            this.event ? this.event.consumed = true : null;
+            console.log('consume: ', text, this.event.consumed);
             onClick();
           }
         }
@@ -436,8 +477,47 @@
 
     drawHelp: {
       value: function () {
-        var ctx = this.ctx;
-        console.log('draw help');
+        var
+          ctx = this.ctx, metrics, width = 0,
+          lines = [
+            'arrow keys -> move',
+            'space -> pause'
+          ],
+          lh = 13,
+          bp = 5,
+          x = this.canvas.width / 2,
+          y = (this.canvas.height - this.hudHeight) / 2 - (lh * lines.length / 2),
+          i, ln;
+
+        if (!this.drawn.hud.help) {
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = 'white';
+          ctx.strokeStyle = 'black';
+          ctx.lineWidth = 1;
+
+          console.log('help');
+          for (i = 0, ln = lines.length; i < ln; i += 1) {
+            metrics = ctx.measureText(lines[i]);
+            width = metrics.width > width ? metrics.width : width;
+          }
+
+          ctx.beginPath();
+          ctx.rect(x - width / 2 - bp, y - lh / 2 - bp, width + bp * 2, lh * lines.length + bp * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.closePath();
+
+          ctx.fillStyle = 'black';
+
+          for (i = 0, ln = lines.length; i < ln; i += 1) {
+            ctx.fillText(lines[i], x, (y + lh * i));
+          }
+
+          this.drawn.hud.help = true;
+        }
+
+        return this;
       }
     },
 
@@ -473,13 +553,13 @@
 
     help: {
       value: function () {
-        //this.showHelp = !this.showHelp;
+        this.showHelp = !this.showHelp;
 
-        this.drawHelp();
-
-        if (this.showHelp === this.playing) {
-          //this.playPause();
+        if (this.playing && !this.paused) {
+          this.playPause();
         }
+
+        this.drawScene();
 
         return this;
       }
