@@ -132,6 +132,7 @@
           }
 
           this.paused = false;
+          this.showHelp = false;
           this.playing = true;
           this.timer = setInterval(this.loopWrapper, this.speed);
         }
