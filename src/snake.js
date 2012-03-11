@@ -1,3 +1,11 @@
+/**
+ *  snake.js
+ *
+ *  @author   Mathieu Merdy - Farof
+ *  @website  https://github.com/Farof/snake.js
+ *  @license  MIT License
+ */
+
 (function (exports) {
   "use strict";
 
