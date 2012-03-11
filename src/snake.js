@@ -372,7 +372,6 @@
         ctx.textBaseline = 'middle';
 
         // clean hud zone
-        console.log('clear', Date.now());
         ctx.clearRect(0, this.canvas.height - this.hudHeight - 1, this.canvas.width, this.hudHeight + 1);
 
         // draw hud top bar
@@ -408,7 +407,6 @@
         if (!this.drawn.hud.score) {
           ctx.fillStyle = 'black';
           ctx.textAlign = 'left';
-          console.log('score');
           ctx.fillText('score: ' + (this.body.length - this.snakeLength), 10, this.canvas.height - this.hudHeight / 2);
           this.drawn.hud.score = true;
         }
@@ -449,7 +447,6 @@
           ctx.fill();
           if (!this.event.consumed && this.event.type === 'mousedown') {
             this.event ? this.event.consumed = true : null;
-            console.log('consume: ', text, this.event.consumed);
             onClick();
           }
         }
@@ -497,7 +494,6 @@
           ctx.strokeStyle = 'black';
           ctx.lineWidth = 1;
 
-          console.log('help');
           for (i = 0, ln = lines.length; i < ln; i += 1) {
             metrics = ctx.measureText(lines[i]);
             width = metrics.width > width ? metrics.width : width;
